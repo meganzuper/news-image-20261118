@@ -25,8 +25,17 @@ def main(argv: list[str]) -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
     dest = output_dir / "entry.png"
     shutil.copyfile(SOURCE, dest)
-    digest = hashlib.sha256(dest.read_bytes()).hexdigest()
-    print(f"wrote {dest} ({dest.stat().st_size} bytes, sha256 {digest})")
+    data = dest.read_bytes()
+    if len(data) > 1048576:
+        raise SystemExit(f"entry.png is {len(data)} bytes, over the 1 MiB limit")
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        raise SystemExit("entry.png is not a PNG file")
+    width = int.from_bytes(data[16:20], "big")
+    height = int.from_bytes(data[20:24], "big")
+    if width > 1024 or height > 1024:
+        raise SystemExit(f"entry.png is {width}x{height}, over the 1024x1024 limit")
+    digest = hashlib.sha256(data).hexdigest()
+    print(f"wrote {dest} ({len(data)} bytes, {width}x{height}, sha256 {digest})")
     return 0
 
 
